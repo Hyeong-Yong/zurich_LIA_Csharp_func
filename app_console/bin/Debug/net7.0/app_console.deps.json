@@ -1,0 +1,39 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v7.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v7.0": {
+      "app_console/1.0.0": {
+        "dependencies": {
+          "ziDotNET-win64": "1.0.8495.23672"
+        },
+        "runtime": {
+          "app_console.dll": {}
+        }
+      },
+      "ziDotNET-win64/1.0.8495.23672": {
+        "runtime": {
+          "ziDotNET-win64.dll": {
+            "assemblyVersion": "1.0.8495.23672",
+            "fileVersion": "0.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "app_console/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "ziDotNET-win64/1.0.8495.23672": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

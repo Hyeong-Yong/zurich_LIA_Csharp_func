@@ -1,0 +1,17 @@
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\obj\Debug\net7.0\app_console.csproj.AssemblyReference.cache
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\obj\Debug\net7.0\app_console.GeneratedMSBuildEditorConfig.editorconfig
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\obj\Debug\net7.0\app_console.AssemblyInfoInputs.cache
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\obj\Debug\net7.0\app_console.AssemblyInfo.cs
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\obj\Debug\net7.0\app_console.csproj.CoreCompileInputs.cache
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\bin\Debug\net7.0\app_console.exe
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\bin\Debug\net7.0\app_console.deps.json
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\bin\Debug\net7.0\app_console.runtimeconfig.json
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\bin\Debug\net7.0\app_console.dll
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\bin\Debug\net7.0\app_console.pdb
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\bin\Debug\net7.0\ziDotNET-win64.dll
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\obj\Debug\net7.0\app_console.csproj.CopyComplete
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\obj\Debug\net7.0\app_console.dll
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\obj\Debug\net7.0\refint\app_console.dll
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\obj\Debug\net7.0\app_console.pdb
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\obj\Debug\net7.0\app_console.genruntimeconfig.cache
+C:\Dev\C#\zurich_LIA_Csharp_func\app_console\obj\Debug\net7.0\ref\app_console.dll
