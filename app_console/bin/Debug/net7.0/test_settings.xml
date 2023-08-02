@@ -3,7 +3,7 @@
   <head>
     <version>23.2</version>
     <revision>42414</revision>
-    <modified>1688457379</modified>
+    <modified>1690784410</modified>
   </head>
   <deviceSettings deviceType="MFLI" deviceSerial="dev3066">
     <options>
@@ -208,12 +208,12 @@
             <inputselect>0</inputselect>
           </triggate>
           <trigholdoff>0.05000000074505806</trigholdoff>
-          <trigholdoffcount>0</trigholdoffcount>
+          <trigholdoffcount>1</trigholdoffcount>
           <trigholdoffmode>0</trigholdoffmode>
           <trighysteresis>
-            <absolute>0.02500000037252903</absolute>
+            <absolute>0.0020000000949949026</absolute>
             <mode>0</mode>
-            <relative>0.02500000037252903</relative>
+            <relative>0.0020000000949949026</relative>
           </trighysteresis>
           <triglevel>0</triglevel>
           <trigreference>0.5</trigreference>
