@@ -3,8 +3,6 @@ using System.Globalization;
 using System.Threading.Channels;
 using zhinst;
 
-namespace ziDotNetExamples
-{
     /// <summary>
     /// This exception is used to notify that the example could not be executed.
     ///
@@ -17,25 +15,36 @@ namespace ziDotNetExamples
 
     public class Examples
     {
-
-        //private static 인스턴스 객체
-        private static Examples? examples;
-
-
-        //public static 의 객체반환 함수
-        public static Examples Instance() { 
-        if(examples == null)
-            {
-                examples = new Examples();
-            }
-            return examples;
+        public Examples(string device = "dev3066", int channel = 0)
+        {
+            dev = device;
+            ch = channel;
         }
 
-        private string device = "";
-        const string DEFAULT_DEVICE = "dev3066";
+        ////private static 인스턴스 객체
+        //private static Examples? examples;
+
+        //private Examples()
+        //{
+        //}
+
+        ////public static 의 객체반환 함수
+        //public static Examples Instance() { 
+        //if(examples == null)
+        //    {
+        //        examples = new Examples();
+        //    }
+        //    return examples;
+        //}
+        private int ch;
+        public int Ch { get => ch; }
+
+        private string dev;
+        private const string DEFAULT_DEVICE = "dev3066";
         ziDotNET daq = new ziDotNET();
 
-        public void Subscribe(int channel = 0)
+
+        public void Subscribe()
         {
             string path;
 
@@ -50,10 +59,10 @@ namespace ziDotNetExamples
             //daq.setInt(path, trigger_enable);
 
             //subscribe
-            path = demods_pathMaker(channel, "sample");
+            path = demods_pathMaker(ch, "sample");
             daq.subscribe(path);
-            Thread.Sleep(100);
-            
+            Thread.Sleep(10);
+
         }
 
 
@@ -66,9 +75,9 @@ namespace ziDotNetExamples
         // ExamplePollDemodSample connects to the device,
         // subscribes to a demodulator, polls the data for 0.1 s
         // and returns the data.
-        public void PollDemodSample(int channel = 0)
+        public void PollDemodSample()
         {
-            string path = demods_pathMaker(channel, "sample");
+            string path = demods_pathMaker(ch, "sample");
 
             // After the subscribe, poll() can be executed continuously within a loop.
             // Arguments to poll() are:
@@ -83,14 +92,14 @@ namespace ziDotNetExamples
             //Dictionary<String, Chunk[]> nodes = lookup.nodes;  // Iterable nodes
             //Chunk[] chunks = lookup[path];  // Iterable chunks
             Chunk data = lookup[path][0];  // Single chunk
-                                           
+
             // Vector of samples
             //ZIDemodSample[] demodSamples = chunk.demodSamples;
 
             // Single sample
             ZIDemodSample demodSample0 = data.demodSamples[0];
             int data_length = data.demodSamples.Length;
-            double R = Math.Sqrt( (Math.Pow(demodSample0.x, 2) + Math.Pow(demodSample0.y, 2)) );
+            double R = Math.Sqrt(Math.Pow(demodSample0.x, 2) + Math.Pow(demodSample0.y, 2));
             Console.WriteLine($"Amplitude: {R}, Phase: {demodSample0.phase}, Frequency: {demodSample0.frequency}");
             Console.WriteLine("Buffer Length:" + data_length);
             Console.WriteLine("--------------------");
@@ -99,27 +108,26 @@ namespace ziDotNetExamples
         }
 
         // ExampleGetDemodSample reads the demodulator sample value of the specified node.
-        public void GetDemodSample(int channel = 0)
+        public void GetDemodSample()
         {
-            
-            String path = String.Format("/{0}/demods/{1}/sample", device, channel);
+
+            string path = string.Format("/{0}/demods/{1}/sample", dev, ch);
             ZIDemodSample sample = daq.getDemodSample(path);
-                        
-            double R = Math.Sqrt((Math.Pow(sample.x, 2) + Math.Pow(sample.y, 2)));
+
+            double R = Math.Sqrt(Math.Pow(sample.x, 2) + Math.Pow(sample.y, 2));
             Console.WriteLine($"Amplitude: {R}, Phase: {sample.phase}, Frequency: {sample.frequency}");
             //Console.WriteLine("Buffer Length:" + data_length);
             Console.WriteLine("-----------Flush buffer------------");
             AssertNotEqual(0ul, sample.timeStamp);
         }
 
-        public void DeviceInit_Load(int preset_flash_number = 1, string dev = DEFAULT_DEVICE) // Timeout(15000)
+        public void DeviceInit_Load(int preset_flash_number = 1) // Timeout(15000)
         {
             daq = connect(dev);
 
 
             // go to the flash 0 (factory setting)
             //resetDeviceToDefault(daq, dev);
-            device = dev;
             string path;
 
             //ziModule settings = daq.deviceSettings();
@@ -163,9 +171,10 @@ namespace ziDotNetExamples
 
             // Load flash setting
             // default : 1
-            if (preset_flash_number <= 6 &&  preset_flash_number >= 0) { 
-            daq.setInt($"/{device}/system/preset/index", preset_flash_number);
-            daq.setInt($"/{device}/system/preset/load", 1);
+            if (preset_flash_number <= 6 && preset_flash_number >= 0)
+            {
+                daq.setInt($"/{dev}/system/preset/index", preset_flash_number);
+                daq.setInt($"/{dev}/system/preset/load", 1);
             }
             else
             {
@@ -173,22 +182,21 @@ namespace ziDotNetExamples
             }
 
             // Is flash loading done?
-            path = $"/{device}/system/preset/busy";
-            Int64 isBusy = daq.getInt(path);
-            while(isBusy == 1)
+            path = $"/{dev}/system/preset/busy";
+            long isBusy = daq.getInt(path);
+            while (isBusy == 1)
             {
-                System.Threading.Thread.Sleep(10);
+                Thread.Sleep(10);
                 isBusy = daq.getInt(path);
             }
 
             //daq.disconnect();
         }
 
-        public void DeviceInit_Settings(string dev = DEFAULT_DEVICE) // Timeout(15000)
+        public void DeviceInit_Settings() // Timeout(15000)
         {
             daq = connect(dev);
             resetDeviceToDefault(daq, dev);
-            device = dev;
             string path;
 
             ziModule settings = daq.deviceSettings();
@@ -201,12 +209,12 @@ namespace ziDotNetExamples
             settings.execute();
             while (!settings.finished())
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
             }
 
             // Remember the current device parameter for later comparison
-            path = $"/{device}/oscs/0/freq";
-            Double originalValue = daq.getDouble(path);
+            path = $"/{dev}/oscs/0/freq";
+            double originalValue = daq.getDouble(path);
 
             // Change the parameter
             daq.setDouble(path, 2 * originalValue);
@@ -219,11 +227,11 @@ namespace ziDotNetExamples
             settings.execute();
             while (!settings.finished())
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
             }
 
             // Check the restored parameter
-            Double newValue = daq.getDouble(path);
+            double newValue = daq.getDouble(path);
 
             AssertEqual(originalValue, newValue);
 
@@ -252,11 +260,11 @@ namespace ziDotNetExamples
             settings.execute();
             while (!settings.finished())
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
             }
             // Remember the current device parameter for later comparison
-            String path = String.Format("/{0}/oscs/0/freq", dev);
-            Double originalValue = daq.getDouble(path);
+            string path = string.Format("/{0}/oscs/0/freq", dev);
+            double originalValue = daq.getDouble(path);
             // Change the parameter
             daq.setDouble(path, 2 * originalValue);
             // Load device settings from file
@@ -267,10 +275,10 @@ namespace ziDotNetExamples
             settings.execute();
             while (!settings.finished())
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
             }
             // Check the restored parameter
-            Double newValue = daq.getDouble(path);
+            double newValue = daq.getDouble(path);
 
             AssertEqual(originalValue, newValue);
 
@@ -289,9 +297,9 @@ namespace ziDotNetExamples
             SkipForDeviceFamily(daq, dev, "HDAWG");
 
             resetDeviceToDefault(daq, dev);
-            String path = String.Format("/{0}/demods/0/sample", dev);
+            string path = string.Format("/{0}/demods/0/sample", dev);
             ZIDemodSample sample = daq.getDemodSample(path);
-            System.Diagnostics.Trace.WriteLine(sample.frequency, "Sample frequency");
+            Trace.WriteLine(sample.frequency, "Sample frequency");
             daq.disconnect();
 
             AssertNotEqual(0ul, sample.timeStamp);
@@ -308,7 +316,7 @@ namespace ziDotNetExamples
 
             resetDeviceToDefault(daq, dev);
 
-            String path = String.Format("/{0}/demods/0/sample", dev);
+            string path = string.Format("/{0}/demods/0/sample", dev);
             daq.subscribe(path);
 
 
@@ -322,7 +330,7 @@ namespace ziDotNetExamples
             //   future version
             Lookup lookup = daq.poll(0.1, 100, 0, 1);
 
-            Dictionary<String, Chunk[]> nodes = lookup.nodes;  // Iterable nodes
+            Dictionary<string, Chunk[]> nodes = lookup.nodes;  // Iterable nodes
             Chunk[] chunks = lookup[path];  // Iterable chunks
             Chunk chunk = lookup[path][0];  // Single chunk
                                             // Vector of samples
@@ -356,11 +364,11 @@ namespace ziDotNetExamples
             settings.execute();
             while (!settings.finished())
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
             }
             // Remember the current device parameter for later comparison
-            String path = String.Format("/{0}/oscs/0/freq", dev);
-            Double originalValue = daq.getDouble(path);
+            string path = string.Format("/{0}/oscs/0/freq", dev);
+            double originalValue = daq.getDouble(path);
             // Change the parameter
             daq.setDouble(path, 2 * originalValue);
             // Load device settings from file
@@ -371,10 +379,10 @@ namespace ziDotNetExamples
             settings.execute();
             while (!settings.finished())
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
             }
             // Check the restored parameter
-            Double newValue = daq.getDouble(path);
+            double newValue = daq.getDouble(path);
 
             AssertEqual(originalValue, newValue);
 
@@ -397,49 +405,49 @@ namespace ziDotNetExamples
             resetDeviceToDefault(daq, dev);
 
             // 0번은 Signal In, 1번은 Aux In1
-            daq.setInt(String.Format("/{0}/demods/0/oscselect", dev), 0);
-            daq.setInt(String.Format("/{0}/demods/1/oscselect", dev), 1);
+            daq.setInt(string.Format("/{0}/demods/0/oscselect", dev), 0);
+            daq.setInt(string.Format("/{0}/demods/1/oscselect", dev), 1);
 
             //Ref.채널 사용하므로 frequency 설정못함
-            daq.setDouble(String.Format("/{0}/oscs/0/freq", dev), 2e6);
-            daq.setDouble(String.Format("/{0}/oscs/1/freq", dev), 2.0001e6);
+            daq.setDouble(string.Format("/{0}/oscs/0/freq", dev), 2e6);
+            daq.setDouble(string.Format("/{0}/oscs/1/freq", dev), 2.0001e6);
 
             // singouts은 필요없음
-            daq.setInt(String.Format("/{0}/sigouts/0/enables/*", dev), 0);
-            daq.setInt(String.Format("/{0}/sigouts/0/enables/0", dev), 1);
-            daq.setInt(String.Format("/{0}/sigouts/0/enables/1", dev), 1);
-            daq.setInt(String.Format("/{0}/sigouts/0/on", dev), 1);
-            daq.setDouble(String.Format("/{0}/sigouts/0/amplitudes/0", dev), 0.2);
-            daq.setDouble(String.Format("/{0}/sigouts/0/amplitudes/1", dev), 0.2);
+            daq.setInt(string.Format("/{0}/sigouts/0/enables/*", dev), 0);
+            daq.setInt(string.Format("/{0}/sigouts/0/enables/0", dev), 1);
+            daq.setInt(string.Format("/{0}/sigouts/0/enables/1", dev), 1);
+            daq.setInt(string.Format("/{0}/sigouts/0/on", dev), 1);
+            daq.setDouble(string.Format("/{0}/sigouts/0/amplitudes/0", dev), 0.2);
+            daq.setDouble(string.Format("/{0}/sigouts/0/amplitudes/1", dev), 0.2);
 
 
 
             ziModule trigger = daq.dataAcquisitionModule();
             trigger.setInt("grid/mode", 4);
-            double demodRate = daq.getDouble(String.Format("/{0}/demods/0/rate", dev));
+            double demodRate = daq.getDouble(string.Format("/{0}/demods/0/rate", dev));
             double duration = trigger.getDouble("duration");
-            Int64 sampleCount = System.Convert.ToInt64(demodRate * duration);
+            long sampleCount = Convert.ToInt64(demodRate * duration);
             trigger.setInt("grid/cols", sampleCount);
             trigger.setByte("device", dev);
             trigger.setInt("type", 1);
             trigger.setDouble("level", 0.1);
             trigger.setDouble("hysteresis", 0.01);
             trigger.setDouble("bandwidth", 0.0);
-            String path = String.Format("/{0}/demods/0/sample.r", dev);
+            string path = string.Format("/{0}/demods/0/sample.r", dev);
             trigger.subscribe(path);
-            String triggerPath = String.Format("/{0}/demods/0/sample.R", dev);
+            string triggerPath = string.Format("/{0}/demods/0/sample.R", dev);
             trigger.setByte("triggernode", triggerPath);
             trigger.execute();
             while (!trigger.finished())
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
                 double progress = trigger.progress() * 100;
-                System.Diagnostics.Trace.WriteLine(progress, "Progress");
+                Trace.WriteLine(progress, "Progress");
             }
             Lookup lookup = trigger.read();
             ZIDoubleData[] demodSample = lookup[path][0].doubleData;
-            String fileName = Environment.CurrentDirectory + "/dataacquisition.txt";
-            System.IO.StreamWriter file = new System.IO.StreamWriter(fileName);
+            string fileName = Environment.CurrentDirectory + "/dataacquisition.txt";
+            StreamWriter file = new StreamWriter(fileName);
             ZIChunkHeader header = lookup[path][0].header;
             // Raw system time is the number of microseconds since linux epoch
             file.WriteLine("Raw System Time: {0}", header.systemTime);
@@ -485,11 +493,11 @@ namespace ziDotNetExamples
         public static void ExamplePollDoubleData(string dev = DEFAULT_DEVICE)
         {
             ziDotNET daq = connect(dev);
-            String path = String.Format("/{0}/oscs/0/freq", dev);
+            string path = string.Format("/{0}/oscs/0/freq", dev);
             daq.getAsEvent(path);
             daq.subscribe(path);
             Lookup lookup = daq.poll(1, 100, 0, 1);
-            Dictionary<String, Chunk[]> nodes = lookup.nodes;  // Iterable nodes
+            Dictionary<string, Chunk[]> nodes = lookup.nodes;  // Iterable nodes
             Chunk[] chunks = lookup[path];  // Iterable chunks
             Chunk chunk = lookup[path][0];  // Single chunk
             ZIDoubleData[] doubleData = lookup[path][0].doubleData;  // Vector of samples
@@ -508,26 +516,26 @@ namespace ziDotNetExamples
             // The PWA example only works for devices with installed Boxcar (BOX) option
             if (hasOption(daq, dev, "BOX"))
             {
-                String enablePath = String.Format("/{0}/inputpwas/0/enable", dev);
+                string enablePath = string.Format("/{0}/inputpwas/0/enable", dev);
                 daq.setInt(enablePath, 1);
-                String path = String.Format("/{0}/inputpwas/0/wave", dev);
+                string path = string.Format("/{0}/inputpwas/0/wave", dev);
                 daq.subscribe(path);
                 Lookup lookup = daq.poll(1, 100, 0, 1);
-                UInt64 timeStamp = lookup[path][0].pwaWaves[0].timeStamp;
-                UInt64 sampleCount = lookup[path][0].pwaWaves[0].sampleCount;
-                UInt32 inputSelect = lookup[path][0].pwaWaves[0].inputSelect;
-                UInt32 oscSelect = lookup[path][0].pwaWaves[0].oscSelect;
-                UInt32 harmonic = lookup[path][0].pwaWaves[0].harmonic;
-                Double frequency = lookup[path][0].pwaWaves[0].frequency;
-                Byte type = lookup[path][0].pwaWaves[0].type;
-                Byte mode = lookup[path][0].pwaWaves[0].mode;
-                Byte overflow = lookup[path][0].pwaWaves[0].overflow;
-                Byte commensurable = lookup[path][0].pwaWaves[0].commensurable;
+                ulong timeStamp = lookup[path][0].pwaWaves[0].timeStamp;
+                ulong sampleCount = lookup[path][0].pwaWaves[0].sampleCount;
+                uint inputSelect = lookup[path][0].pwaWaves[0].inputSelect;
+                uint oscSelect = lookup[path][0].pwaWaves[0].oscSelect;
+                uint harmonic = lookup[path][0].pwaWaves[0].harmonic;
+                double frequency = lookup[path][0].pwaWaves[0].frequency;
+                byte type = lookup[path][0].pwaWaves[0].type;
+                byte mode = lookup[path][0].pwaWaves[0].mode;
+                byte overflow = lookup[path][0].pwaWaves[0].overflow;
+                byte commensurable = lookup[path][0].pwaWaves[0].commensurable;
                 double[] grid = lookup[path][0].pwaWaves[0].binPhase;
                 double[] x = lookup[path][0].pwaWaves[0].x;
                 double[] y = lookup[path][0].pwaWaves[0].y;
-                String fileName = Environment.CurrentDirectory + "/pwa.txt";
-                System.IO.StreamWriter file = new System.IO.StreamWriter(fileName);
+                string fileName = Environment.CurrentDirectory + "/pwa.txt";
+                StreamWriter file = new StreamWriter(fileName);
                 file.WriteLine("TimeStamp: {0}", timeStamp);
                 file.WriteLine("Sample Count: {0}", sampleCount);
                 file.WriteLine("Input Select: {0}", inputSelect);
@@ -555,13 +563,13 @@ namespace ziDotNetExamples
 
             resetDeviceToDefault(daq, dev);
 
-            String enablePath = String.Format("/{0}/scopes/0/enable", dev);
+            string enablePath = string.Format("/{0}/scopes/0/enable", dev);
             daq.setInt(enablePath, 1);
-            String path = String.Format("/{0}/scopes/0/wave", dev);
+            string path = string.Format("/{0}/scopes/0/wave", dev);
             daq.subscribe(path);
             Lookup lookup = daq.poll(1, 100, 0, 1);
-            UInt64 timeStamp = lookup[path][0].scopeWaves[0].header.timeStamp;
-            UInt64 sampleCount = lookup[path][0].scopeWaves[0].header.totalSamples;
+            ulong timeStamp = lookup[path][0].scopeWaves[0].header.timeStamp;
+            ulong sampleCount = lookup[path][0].scopeWaves[0].header.totalSamples;
             daq.disconnect();
 
             AssertNotEqual(0ul, timeStamp);
@@ -580,7 +588,7 @@ namespace ziDotNetExamples
                 resetDeviceToDefault(daq, dev);
 
                 // Request vector node from device
-                String path = String.Format("/{0}/awgs/0/waveform/waves/0", dev);
+                string path = string.Format("/{0}/awgs/0/waveform/waves/0", dev);
                 daq.getAsEvent(path);
 
                 // Poll until the node path is found in the result data
@@ -607,7 +615,7 @@ namespace ziDotNetExamples
                 // Waveform vector data is stored as 32-bit unsigned integer
                 if (vectorData.vector != null)  // Check for empty container
                 {
-                    UInt32[] vector = vectorData.vector.data as UInt32[];
+                    uint[] vector = vectorData.vector.data as uint[];
                 }
 
                 AssertNotEqual(0ul, vectorData.timeStamp);
@@ -630,15 +638,15 @@ namespace ziDotNetExamples
             }
             resetDeviceToDefault(daq, dev);
             // Enable impedance control
-            daq.setInt(String.Format("/{0}/imps/0/enable", dev), 1);
+            daq.setInt(string.Format("/{0}/imps/0/enable", dev), 1);
             // Return R and Cp
-            daq.setInt(String.Format("/{0}/imps/0/model", dev), 0);
+            daq.setInt(string.Format("/{0}/imps/0/model", dev), 0);
             // Enable user compensation
-            daq.setInt(String.Format("/{0}/imps/0/calib/user/enable", dev), 1);
+            daq.setInt(string.Format("/{0}/imps/0/calib/user/enable", dev), 1);
             // Wait until auto ranging has settled
-            System.Threading.Thread.Sleep(4000);
+            Thread.Sleep(4000);
             // Subscribe to the impedance data stream
-            String path = String.Format("/{0}/imps/0/sample", dev);
+            string path = string.Format("/{0}/imps/0/sample", dev);
             daq.subscribe(path);
             // After the subscribe, poll() can be executed continuously within a loop.
             // Arguments to poll() are:
@@ -649,7 +657,7 @@ namespace ziDotNetExamples
             // - 'bufferSize': should be provided as 1 and will be removed in a
             //   future version
             Lookup lookup = daq.poll(0.1, 100, 0, 1);
-            Dictionary<String, Chunk[]> nodes = lookup.nodes;  // Iterable nodes
+            Dictionary<string, Chunk[]> nodes = lookup.nodes;  // Iterable nodes
             Chunk[] chunks = lookup[path];  // Iterable chunks
             Chunk chunk = lookup[path][0];  // Single chunk
                                             // Vector of samples
@@ -657,10 +665,10 @@ namespace ziDotNetExamples
             // Single sample
             ZIImpedanceSample impedanceSample0 = lookup[path][0].impedanceSamples[0];
             // Extract the R||C representation values
-            System.Diagnostics.Trace.WriteLine(
-                    String.Format("Impedance Resistor value: {0} Ohm.", impedanceSample0.param0));
-            System.Diagnostics.Trace.WriteLine(
-                    String.Format("Impedance Capacitor value: {0} F.", impedanceSample0.param1));
+            Trace.WriteLine(
+                    string.Format("Impedance Resistor value: {0} Ohm.", impedanceSample0.param0));
+            Trace.WriteLine(
+                    string.Format("Impedance Capacitor value: {0} F.", impedanceSample0.param1));
             daq.disconnect();
 
             AssertNotEqual(0ul, impedanceSample0.timeStamp);
@@ -679,21 +687,21 @@ namespace ziDotNetExamples
             sweep.setDouble("start", 1e3);
             sweep.setDouble("stop", 1e5);
             sweep.setDouble("samplecount", 100);
-            String path = String.Format("/{0}/demods/0/sample", dev);
+            string path = string.Format("/{0}/demods/0/sample", dev);
             sweep.subscribe(path);
             sweep.execute();
             while (!sweep.finished())
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
                 double progress = sweep.progress() * 100;
-                System.Diagnostics.Trace.WriteLine(progress, "Progress");
+                Trace.WriteLine(progress, "Progress");
             }
             Lookup lookup = sweep.read();
             double[] grid = lookup[path][0].sweeperDemodWaves[0].grid;
             double[] x = lookup[path][0].sweeperDemodWaves[0].x;
             double[] y = lookup[path][0].sweeperDemodWaves[0].y;
-            String fileName = Environment.CurrentDirectory + "/sweep.txt";
-            System.IO.StreamWriter file = new System.IO.StreamWriter(fileName);
+            string fileName = Environment.CurrentDirectory + "/sweep.txt";
+            StreamWriter file = new StreamWriter(fileName);
             ZIChunkHeader header = lookup[path][0].header;
             // Raw system time is the number of microseconds since linux epoch
             file.WriteLine("Raw System Time: {0}", header.systemTime);
@@ -731,15 +739,15 @@ namespace ziDotNetExamples
 
             resetDeviceToDefault(daq, dev);
             // Enable impedance control
-            daq.setInt(String.Format("/{0}/imps/0/enable", dev), 1);
+            daq.setInt(string.Format("/{0}/imps/0/enable", dev), 1);
             // Return D and Cs
-            daq.setInt(String.Format("/{0}/imps/0/model", dev), 4);
+            daq.setInt(string.Format("/{0}/imps/0/model", dev), 4);
             // Enable user compensation
-            daq.setInt(String.Format("/{0}/imps/0/calib/user/enable", dev), 1);
+            daq.setInt(string.Format("/{0}/imps/0/calib/user/enable", dev), 1);
 
             // ensure correct settings of order and oscselect
-            daq.setInt(String.Format("/{0}/imps/0/demod/order", dev), 8);
-            daq.setInt(String.Format("/{0}/imps/0/demod/oscselect", dev), 0);
+            daq.setInt(string.Format("/{0}/imps/0/demod/order", dev), 8);
+            daq.setInt(string.Format("/{0}/imps/0/demod/oscselect", dev), 0);
             daq.sync();
 
             ziModule sweep = daq.sweeper();
@@ -758,14 +766,14 @@ namespace ziDotNetExamples
             sweep.setDouble("averaging/sample", 200);
             sweep.setDouble("averaging/time", 0.100);
             sweep.setDouble("averaging/tc", 20.0);
-            String path = String.Format("/{0}/imps/0/sample", dev);
+            string path = string.Format("/{0}/imps/0/sample", dev);
             sweep.subscribe(path);
             sweep.execute();
             while (!sweep.finished())
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
                 double progress = sweep.progress() * 100;
-                System.Diagnostics.Trace.WriteLine(progress, "Progress");
+                Trace.WriteLine(progress, "Progress");
             }
             Lookup lookup = sweep.read();
             double[] grid = lookup[path][0].sweeperImpedanceWaves[0].grid;
@@ -773,10 +781,10 @@ namespace ziDotNetExamples
             double[] y = lookup[path][0].sweeperImpedanceWaves[0].imagz;
             double[] param0 = lookup[path][0].sweeperImpedanceWaves[0].param0;
             double[] param1 = lookup[path][0].sweeperImpedanceWaves[0].param1;
-            UInt64[] flags = lookup[path][0].sweeperImpedanceWaves[0].flags;
+            ulong[] flags = lookup[path][0].sweeperImpedanceWaves[0].flags;
             // Save measurement data to file
-            String fileName = Environment.CurrentDirectory + "/impedance.txt";
-            System.IO.StreamWriter file = new System.IO.StreamWriter(fileName);
+            string fileName = Environment.CurrentDirectory + "/impedance.txt";
+            StreamWriter file = new StreamWriter(fileName);
             ZIChunkHeader header = lookup[path][0].header;
             // Raw system time is the number of microseconds since linux epoch
             file.WriteLine("Raw System Time: {0}", header.systemTime);
@@ -820,11 +828,11 @@ namespace ziDotNetExamples
             resetDeviceToDefault(daq, dev);
 
             // Enable impedance control
-            daq.setInt(String.Format("/{0}/imps/0/enable", dev), 1);
+            daq.setInt(string.Format("/{0}/imps/0/enable", dev), 1);
             ziModule calib = daq.impedanceModule();
             calib.execute();
             calib.setByte("device", dev);
-            System.Threading.Thread.Sleep(200);
+            Thread.Sleep(200);
             calib.setInt("mode", 4);
             calib.setDouble("loads/2/r", 1000.0);
             calib.setDouble("loads/2/c", 0.0);
@@ -832,8 +840,8 @@ namespace ziDotNetExamples
             calib.setDouble("freq/stop", 500e3);
             calib.setDouble("freq/samplecount", 21);
 
-            daq.setInt(String.Format("/{0}/imps/0/demod/order", dev), 8);
-            daq.setInt(String.Format("/{0}/imps/0/demod/oscselect", dev), 0);
+            daq.setInt(string.Format("/{0}/imps/0/demod/order", dev), 8);
+            daq.setInt(string.Format("/{0}/imps/0/demod/oscselect", dev), 0);
             daq.sync();
 
 
@@ -841,17 +849,17 @@ namespace ziDotNetExamples
             calib.setInt("calibrate", 1);
             while (true)
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
                 double progress = calib.progress() * 100;
-                System.Diagnostics.Trace.WriteLine(progress, "Progress");
-                Int64 calibrate = calib.getInt("calibrate");
+                Trace.WriteLine(progress, "Progress");
+                long calibrate = calib.getInt("calibrate");
                 if (calibrate == 0)
                 {
                     break;
                 }
             }
-            String message = calib.getString("message");
-            System.Diagnostics.Trace.WriteLine(message, "Message");
+            string message = calib.getString("message");
+            Trace.WriteLine(message, "Message");
             AssertNotEqual(0, calib.progress());
 
             calib.clear();  // Release module resources. Especially important if modules are created
@@ -869,21 +877,21 @@ namespace ziDotNetExamples
             ziModule spectrum = daq.spectrum();
             spectrum.setByte("device", dev);
             spectrum.setInt("bit", 10);
-            String path = String.Format("/{0}/demods/0/sample", dev);
+            string path = string.Format("/{0}/demods/0/sample", dev);
             spectrum.subscribe(path);
             spectrum.execute();
             while (!spectrum.finished())
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
                 double progress = spectrum.progress() * 100;
-                System.Diagnostics.Trace.WriteLine(progress, "Progress");
+                Trace.WriteLine(progress, "Progress");
             }
             Lookup lookup = spectrum.read();
             double[] grid = lookup[path][0].spectrumWaves[0].grid;
             double[] x = lookup[path][0].spectrumWaves[0].x;
             double[] y = lookup[path][0].spectrumWaves[0].y;
-            String fileName = Environment.CurrentDirectory + "/spectrum.txt";
-            System.IO.StreamWriter file = new System.IO.StreamWriter(fileName);
+            string fileName = Environment.CurrentDirectory + "/spectrum.txt";
+            StreamWriter file = new StreamWriter(fileName);
             for (int i = 0; i < grid.Length; ++i)
             {
                 file.WriteLine("{0} {1} {2}", grid[i], x[i], y[i]);
@@ -909,38 +917,38 @@ namespace ziDotNetExamples
             }
             resetDeviceToDefault(daq, dev);
             ziModule scopeModule = daq.scopeModule();
-            String path = String.Format("/{0}/scopes/0/wave", dev);
+            string path = string.Format("/{0}/scopes/0/wave", dev);
             scopeModule.subscribe(path);
             scopeModule.execute();
             // The HF2 devices do not have a single event functionality.
             if (!isDeviceFamily(daq, dev, "HF2"))
             {
-                daq.setInt(String.Format("/{0}/scopes/0/single", dev), 1);
-                daq.setInt(String.Format("/{0}/scopes/0/trigenable", dev), 0);
+                daq.setInt(string.Format("/{0}/scopes/0/single", dev), 1);
+                daq.setInt(string.Format("/{0}/scopes/0/trigenable", dev), 0);
             }
-            daq.setInt(String.Format("/{0}/scopes/0/enable", dev), 1);
+            daq.setInt(string.Format("/{0}/scopes/0/enable", dev), 1);
 
             Lookup lookup;
             bool allSegments = false;
             do
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
                 double progress = scopeModule.progress() * 100;
-                System.Diagnostics.Trace.WriteLine(progress, "Progress");
+                Trace.WriteLine(progress, "Progress");
                 lookup = scopeModule.read();
                 if (lookup.nodes.ContainsKey(path))
                 {
                     ZIScopeWave[] scopeWaves = lookup[path][0].scopeWaves;
-                    UInt64 totalSegments = scopeWaves[0].header.totalSegments;
-                    UInt64 segmentNumber = scopeWaves[0].header.segmentNumber;
-                    allSegments = (totalSegments == 0) ||
-                                  (segmentNumber >= totalSegments - 1);
+                    ulong totalSegments = scopeWaves[0].header.totalSegments;
+                    ulong segmentNumber = scopeWaves[0].header.segmentNumber;
+                    allSegments = totalSegments == 0 ||
+                                  segmentNumber >= totalSegments - 1;
                 }
             } while (!allSegments);
             ZIScopeWave[] scopeWaves1 = lookup[path][0].scopeWaves;
             float[,] wave = SimpleValue.getFloatVec2D(scopeWaves1[0].wave);
             // ...
-            System.Diagnostics.Trace.WriteLine(wave.Length, "Wave Size");
+            Trace.WriteLine(wave.Length, "Wave Size");
             AssertNotEqual(0, wave.Length);
 
             scopeModule.clear();  // Release module resources. Especially important if modules are created
@@ -966,18 +974,18 @@ namespace ziDotNetExamples
             }
             // Create instrument configuration: disable all outputs, demods and scopes.
             const ZIListNodes_enum flags = ZIListNodes_enum.ZI_LIST_NODES_LEAVESONLY;
-            var hasDemods = daq.listNodes(String.Format("/{0}/demods/*", dev), flags).Count > 0;
+            var hasDemods = daq.listNodes(string.Format("/{0}/demods/*", dev), flags).Count > 0;
             if (hasDemods)
             {
-                daq.setInt(String.Format("/{0}/demods/*/enable", dev), 0);
-                daq.setInt(String.Format("/{0}/demods/*/trigger", dev), 0);
+                daq.setInt(string.Format("/{0}/demods/*/enable", dev), 0);
+                daq.setInt(string.Format("/{0}/demods/*/trigger", dev), 0);
             }
 
-            daq.setInt(String.Format("/{0}/sigouts/*/enables/*", dev), 0);
-            daq.setInt(String.Format("/{0}/scopes/*/enable", dev), 0);
+            daq.setInt(string.Format("/{0}/sigouts/*/enables/*", dev), 0);
+            daq.setInt(string.Format("/{0}/scopes/*/enable", dev), 0);
             if (hasOption(daq, dev, "IA"))
             {
-                daq.setInt(String.Format("/{0}/imps/*/enable", dev), 0);
+                daq.setInt(string.Format("/{0}/imps/*/enable", dev), 0);
             }
             daq.sync();
 
@@ -989,20 +997,20 @@ namespace ziDotNetExamples
             double frequency = 1e6;
             double amp = 1.0;
 
-            daq.setDouble(String.Format("/{0}/sigouts/0/amplitudes/*", dev), 0.0);
+            daq.setDouble(string.Format("/{0}/sigouts/0/amplitudes/*", dev), 0.0);
             daq.sync();
 
-            daq.setInt(String.Format("/{0}/sigins/0/imp50", dev), 1);
-            daq.setInt(String.Format("/{0}/sigins/0/ac", dev), 0);
-            daq.setInt(String.Format("/{0}/sigins/0/diff", dev), 0);
-            daq.setInt(String.Format("/{0}/sigins/0/range", dev), 1);
-            daq.setDouble(String.Format("/{0}/oscs/0/freq", dev), frequency);
-            daq.setInt(String.Format("/{0}/sigouts/0/on", dev), 1);
-            daq.setInt(String.Format("/{0}/sigouts/0/range", dev), 1);
-            daq.setDouble(String.Format("/{0}/awgs/0/outputs/0/amplitude", dev), amp);
-            daq.setInt(String.Format("/{0}/awgs/0/outputs/0/mode", dev), 0);
-            daq.setInt(String.Format("/{0}/awgs/0/time", dev), 0);
-            daq.setInt(String.Format("/{0}/awgs/0/userregs/0", dev), 0);
+            daq.setInt(string.Format("/{0}/sigins/0/imp50", dev), 1);
+            daq.setInt(string.Format("/{0}/sigins/0/ac", dev), 0);
+            daq.setInt(string.Format("/{0}/sigins/0/diff", dev), 0);
+            daq.setInt(string.Format("/{0}/sigins/0/range", dev), 1);
+            daq.setDouble(string.Format("/{0}/oscs/0/freq", dev), frequency);
+            daq.setInt(string.Format("/{0}/sigouts/0/on", dev), 1);
+            daq.setInt(string.Format("/{0}/sigouts/0/range", dev), 1);
+            daq.setDouble(string.Format("/{0}/awgs/0/outputs/0/amplitude", dev), amp);
+            daq.setInt(string.Format("/{0}/awgs/0/outputs/0/mode", dev), 0);
+            daq.setInt(string.Format("/{0}/awgs/0/time", dev), 0);
+            daq.setInt(string.Format("/{0}/awgs/0/userregs/0", dev), 0);
 
             daq.sync();
 
@@ -1039,15 +1047,15 @@ namespace ziDotNetExamples
               v => -1.0 * (0.42 - 0.5 * Math.Cos(2.0 * Math.PI * v / (AWG_N - 1)) + 0.08 * Math.Cos(4 * Math.PI * v / (AWG_N - 1))));
             double width = AWG_N / 20;
             var linspace = Enumerable.Range(0, AWG_N).Select(
-              v => (v * AWG_N / ((double)AWG_N - 1.0d)) - AWG_N / 2);
+              v => v * AWG_N / (AWG_N - 1.0d) - AWG_N / 2);
             var waveform_1 = linspace.Select(
               v => Math.Exp(-v * v / (2 * width * width)));
             linspace = Enumerable.Range(0, AWG_N).Select(
-              v => (v * 2 * Math.PI / ((double)AWG_N - 1.0d)));
+              v => v * 2 * Math.PI / (AWG_N - 1.0d));
             var waveform_2 = linspace.Select(
               v => Math.Sin(v));
             linspace = Enumerable.Range(0, AWG_N).Select(
-              v => (v * 12 * Math.PI / ((double)AWG_N - 1.0d)) - 6 * Math.PI);
+              v => v * 12 * Math.PI / (AWG_N - 1.0d) - 6 * Math.PI);
             var waveform_3 = linspace.Select(
               v => Sinc(v));
 
@@ -1091,7 +1099,7 @@ namespace ziDotNetExamples
             awgModule.setByte("compiler/sourcestring", awg_program);
             while (awgModule.getInt("compiler/status") == -1)
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
             }
 
             // check compiler result
@@ -1099,33 +1107,33 @@ namespace ziDotNetExamples
             if (status == 1)
             {
                 // compilation failed
-                String message = awgModule.getString("compiler/statusstring");
-                System.Diagnostics.Trace.WriteLine("AWG Program:");
-                System.Diagnostics.Trace.WriteLine(awg_program);
-                System.Diagnostics.Trace.WriteLine("---");
-                System.Diagnostics.Trace.WriteLine(message, "Compiler message:");
+                string message = awgModule.getString("compiler/statusstring");
+                Trace.WriteLine("AWG Program:");
+                Trace.WriteLine(awg_program);
+                Trace.WriteLine("---");
+                Trace.WriteLine(message, "Compiler message:");
                 Fail("Compilation failed");
             }
             if (status == 0)
             {
-                System.Diagnostics.Trace.WriteLine("Compilation successful with no warnings" +
+                Trace.WriteLine("Compilation successful with no warnings" +
                   ", will upload the program to the instrument.");
             }
             if (status == 2)
             {
-                System.Diagnostics.Trace.WriteLine("Compilation successful with warnings" +
+                Trace.WriteLine("Compilation successful with warnings" +
                   ", will upload the program to the instrument.");
-                String message = awgModule.getString("compiler/statusstring");
-                System.Diagnostics.Trace.WriteLine("Compiler warning:");
-                System.Diagnostics.Trace.WriteLine(message);
+                string message = awgModule.getString("compiler/statusstring");
+                Trace.WriteLine("Compiler warning:");
+                Trace.WriteLine(message);
             }
 
             // wait for waveform upload to finish
             while (awgModule.getDouble("progress") < 1.0)
             {
-                System.Diagnostics.Trace.WriteLine(
+                Trace.WriteLine(
                   awgModule.getDouble("progress"), "Progress");
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
             }
 
             // Replace w3 with waveform_3 using vector write.
@@ -1143,80 +1151,80 @@ namespace ziDotNetExamples
             // For dual-channel waves, interleaving is required.
 
             // The following function corresponds to ziPython utility function 'convert_awg_waveform'.
-            Func<double, ushort> convert_awg_waveform = v => (ushort)((32767.0) * v);
-            daq.setVector(String.Format("/{0}/awgs/0/waveform/waves/3", dev), waveform_3.Select(convert_awg_waveform).ToArray());
+            Func<double, ushort> convert_awg_waveform = v => (ushort)(32767.0 * v);
+            daq.setVector(string.Format("/{0}/awgs/0/waveform/waves/3", dev), waveform_3.Select(convert_awg_waveform).ToArray());
 
             // Configure the Scope for measurement
             daq.setInt(
-              String.Format("/{0}/scopes/0/channels/0/inputselect", dev), in_channel);
-            daq.setInt(String.Format("/{0}/scopes/0/time", dev), 0);
-            daq.setInt(String.Format("/{0}/scopes/0/enable", dev), 0);
-            daq.setInt(String.Format("/{0}/scopes/0/length", dev), 16836);
+              string.Format("/{0}/scopes/0/channels/0/inputselect", dev), in_channel);
+            daq.setInt(string.Format("/{0}/scopes/0/time", dev), 0);
+            daq.setInt(string.Format("/{0}/scopes/0/enable", dev), 0);
+            daq.setInt(string.Format("/{0}/scopes/0/length", dev), 16836);
 
             // Now configure the scope's trigger to get aligned data.
-            daq.setInt(String.Format("/{0}/scopes/0/trigenable", dev), 1);
+            daq.setInt(string.Format("/{0}/scopes/0/trigenable", dev), 1);
             // Here we trigger on UHF signal input 1. If the instrument has the DIG Option installed we could
             // trigger the scope using an AWG Trigger instead (see the `setTrigger(1);` line in `awg_program` above).
             // 0:   Signal Input 1
             // 192: AWG Trigger 1
             long trigchannel = 0;
-            daq.setInt(String.Format("/{0}/scopes/0/trigchannel", dev), trigchannel);
+            daq.setInt(string.Format("/{0}/scopes/0/trigchannel", dev), trigchannel);
             if (trigchannel == 0)
             {
                 // Trigger on the falling edge of the negative blackman waveform `w0` from our AWG program.
-                daq.setInt(String.Format("/{0}/scopes/0/trigslope", dev), 2);
-                daq.setDouble(String.Format("/{0}/scopes/0/triglevel", dev), -0.600);
+                daq.setInt(string.Format("/{0}/scopes/0/trigslope", dev), 2);
+                daq.setDouble(string.Format("/{0}/scopes/0/triglevel", dev), -0.600);
 
                 // Set hysteresis triggering threshold to avoid triggering on noise
                 // 'trighysteresis/mode' :
                 //  0 - absolute, use an absolute value ('scopes/0/trighysteresis/absolute')
                 //  1 - relative, use a relative value ('scopes/0trighysteresis/relative') of the trigchannel's input range
                 //      (0.1=10%).
-                daq.setDouble(String.Format("/{0}/scopes/0/trighysteresis/mode", dev), 0);
-                daq.setDouble(String.Format("/{0}/scopes/0/trighysteresis/relative", dev), 0.025);
+                daq.setDouble(string.Format("/{0}/scopes/0/trighysteresis/mode", dev), 0);
+                daq.setDouble(string.Format("/{0}/scopes/0/trighysteresis/relative", dev), 0.025);
 
                 // Set a negative trigdelay to capture the beginning of the waveform.
-                daq.setDouble(String.Format("/{0}/scopes/0/trigdelay", dev), -1.0e-6);
+                daq.setDouble(string.Format("/{0}/scopes/0/trigdelay", dev), -1.0e-6);
             }
             else
             {
                 // Assume we're using an AWG Trigger, then the scope configuration is simple: Trigger on rising edge.
-                daq.setInt(String.Format("/{0}/scopes/0/trigslope", dev), 1);
+                daq.setInt(string.Format("/{0}/scopes/0/trigslope", dev), 1);
 
                 // Set trigdelay to 0.0: Start recording from when the trigger is activated.
-                daq.setDouble(String.Format("/{0}/scopes/0/trigdelay", dev), 0.0);
+                daq.setDouble(string.Format("/{0}/scopes/0/trigdelay", dev), 0.0);
             }
 
             // the trigger reference position relative within the wave, a value of 0.5 corresponds to the center of the wave
-            daq.setDouble(String.Format("/{0}/scopes/0/trigreference", dev), 0.0);
+            daq.setDouble(string.Format("/{0}/scopes/0/trigreference", dev), 0.0);
 
             // Set the hold off time in-between triggers.
-            daq.setDouble(String.Format("/{0}/scopes/0/trigholdoff", dev), 0.025);
+            daq.setDouble(string.Format("/{0}/scopes/0/trigholdoff", dev), 0.025);
 
             // Set up the Scope Module.
             ziModule scopeModule = daq.scopeModule();
             scopeModule.setInt("mode", 1);
-            scopeModule.subscribe(String.Format("/{0}/scopes/0/wave", dev));
-            daq.setInt(String.Format("/{0}/scopes/0/single", dev), 1);
+            scopeModule.subscribe(string.Format("/{0}/scopes/0/wave", dev));
+            daq.setInt(string.Format("/{0}/scopes/0/single", dev), 1);
             scopeModule.execute();
-            daq.setInt(String.Format("/{0}/scopes/0/enable", dev), 1);
+            daq.setInt(string.Format("/{0}/scopes/0/enable", dev), 1);
             daq.sync();
-            System.Threading.Thread.Sleep(100);
+            Thread.Sleep(100);
 
             // Start the AWG in single-shot mode
-            daq.setInt(String.Format("/{0}/awgs/0/single", dev), 1);
-            daq.setInt(String.Format("/{0}/awgs/0/enable", dev), 1);
+            daq.setInt(string.Format("/{0}/awgs/0/single", dev), 1);
+            daq.setInt(string.Format("/{0}/awgs/0/enable", dev), 1);
 
             // Read the scope data (manual timeout of 1 second)
             double local_timeout = 1.0;
             while (scopeModule.progress() < 1.0 && local_timeout > 0.0)
             {
-                System.Diagnostics.Trace.WriteLine(
+                Trace.WriteLine(
                   scopeModule.progress() * 100.0, "Scope Progress");
-                System.Threading.Thread.Sleep(20);
+                Thread.Sleep(20);
                 local_timeout -= 0.02;
             }
-            string path = String.Format("/{0}/scopes/0/wave", dev);
+            string path = string.Format("/{0}/scopes/0/wave", dev);
             Lookup lookup = scopeModule.read();
             ZIScopeWave[] scopeWaves1 = lookup[path][0].scopeWaves;
             float[,] y_measured_in = SimpleValue.getFloatVec2D(scopeWaves1[0].wave);
@@ -1233,8 +1241,8 @@ namespace ziDotNetExamples
                 ).ToArray();
 
             // write signals to files
-            String fileName = Environment.CurrentDirectory + "/awg_measured.txt";
-            System.IO.StreamWriter file = new System.IO.StreamWriter(fileName);
+            string fileName = Environment.CurrentDirectory + "/awg_measured.txt";
+            StreamWriter file = new StreamWriter(fileName);
             file.WriteLine("t [ns], measured signal [V]");
             for (int i = 0; i < y_measured.Length; ++i)
             {
@@ -1243,7 +1251,7 @@ namespace ziDotNetExamples
             file.Close();
 
             fileName = Environment.CurrentDirectory + "/awg_expected.txt";
-            file = new System.IO.StreamWriter(fileName);
+            file = new StreamWriter(fileName);
             file.WriteLine("t [ns], expected signal [V]");
             for (int i = 0; i < y_expected.Length; ++i)
             {
@@ -1291,59 +1299,59 @@ namespace ziDotNetExamples
 
             resetDeviceToDefault(daq, dev);
             // Create instrument configuration: disable all outputs, demods and scopes.
-            daq.setInt(String.Format("/{0}/demods/*/enable", dev), 0);
-            daq.setInt(String.Format("/{0}/demods/*/trigger", dev), 0);
-            daq.setInt(String.Format("/{0}/sigouts/*/enables/*", dev), 0);
-            daq.setInt(String.Format("/{0}/scopes/*/enable", dev), 0);
-            daq.setInt(String.Format("/{0}/imps/*/enable", dev), 0);
+            daq.setInt(string.Format("/{0}/demods/*/enable", dev), 0);
+            daq.setInt(string.Format("/{0}/demods/*/trigger", dev), 0);
+            daq.setInt(string.Format("/{0}/sigouts/*/enables/*", dev), 0);
+            daq.setInt(string.Format("/{0}/scopes/*/enable", dev), 0);
+            daq.setInt(string.Format("/{0}/imps/*/enable", dev), 0);
             daq.sync();
 
             int imp = 0;
-            long curr = daq.getInt(String.Format("/{0}/imps/{1}/current/inputselect", dev, imp));
-            long volt = daq.getInt(String.Format("/{0}/imps/{1}/voltage/inputselect", dev, imp));
+            long curr = daq.getInt(string.Format("/{0}/imps/{1}/current/inputselect", dev, imp));
+            long volt = daq.getInt(string.Format("/{0}/imps/{1}/voltage/inputselect", dev, imp));
             double manCurrRange = 10e-3;
             double manVoltRange = 10e-3;
 
             // Now configure the instrument for this experiment. The following channels and indices work on all devices with IA option.
             // The values below may be changed if the instrument has multiple IA modules.
-            daq.setInt(String.Format("/{0}/imps/{1}/enable", dev, imp), 1);
-            daq.setInt(String.Format("/{0}/imps/{1}/mode", dev, imp), 0);
-            daq.setInt(String.Format("/{0}/imps/{1}/auto/output", dev, imp), 1);
-            daq.setInt(String.Format("/{0}/imps/{1}/auto/bw", dev, imp), 1);
-            daq.setDouble(String.Format("/{0}/imps/{1}/freq", dev, imp), 500);
-            daq.setInt(String.Format("/{0}/imps/{1}/auto/inputrange", dev, imp), 0);
-            daq.setDouble(String.Format("/{0}/currins/{1}/range", dev, curr), manCurrRange);
-            daq.setDouble(String.Format("/{0}/sigins/{1}/range", dev, volt), manVoltRange);
+            daq.setInt(string.Format("/{0}/imps/{1}/enable", dev, imp), 1);
+            daq.setInt(string.Format("/{0}/imps/{1}/mode", dev, imp), 0);
+            daq.setInt(string.Format("/{0}/imps/{1}/auto/output", dev, imp), 1);
+            daq.setInt(string.Format("/{0}/imps/{1}/auto/bw", dev, imp), 1);
+            daq.setDouble(string.Format("/{0}/imps/{1}/freq", dev, imp), 500);
+            daq.setInt(string.Format("/{0}/imps/{1}/auto/inputrange", dev, imp), 0);
+            daq.setDouble(string.Format("/{0}/currins/{1}/range", dev, curr), manCurrRange);
+            daq.setDouble(string.Format("/{0}/sigins/{1}/range", dev, volt), manVoltRange);
             daq.sync();
 
             // After setting the device in manual ranging mode we want to trigger manually a one time auto ranging to find a suitable range.
             // Therefore, we trigger the  auto ranging for the current input as well as for the voltage input.
-            daq.setInt(String.Format("/{0}/currins/{1}/autorange", dev, curr), 1);
-            daq.setInt(String.Format("/{0}/sigins/{1}/autorange", dev, volt), 1);
+            daq.setInt(string.Format("/{0}/currins/{1}/autorange", dev, curr), 1);
+            daq.setInt(string.Format("/{0}/sigins/{1}/autorange", dev, volt), 1);
 
             // The auto ranging takes some time. We do not want to continue before the best range is found.
             // Therefore, we implement a loop to check if the auto ranging is finished.
             int count = 0;
-            System.Threading.Thread.Sleep(100);
+            Thread.Sleep(100);
             bool finished = false;
-            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var watch = Stopwatch.StartNew();
             while (!finished)
             {
                 ++count;
-                System.Threading.Thread.Sleep(500);
-                finished = (daq.getInt(String.Format("/{0}/currins/{1}/autorange", dev, curr)) == 0 &&
-                            daq.getInt(String.Format("/{0}/sigins/{1}/autorange", dev, volt)) == 0);
+                Thread.Sleep(500);
+                finished = daq.getInt(string.Format("/{0}/currins/{1}/autorange", dev, curr)) == 0 &&
+                            daq.getInt(string.Format("/{0}/sigins/{1}/autorange", dev, volt)) == 0;
             }
             watch.Stop();
-            System.Diagnostics.Trace.WriteLine(
-              String.Format("Auto ranging finished after {0} s.", watch.ElapsedMilliseconds / 1e3));
+            Trace.WriteLine(
+              string.Format("Auto ranging finished after {0} s.", watch.ElapsedMilliseconds / 1e3));
 
-            double autoCurrRange = daq.getDouble(String.Format("/{0}/currins/{1}/range", dev, curr));
-            double autoVoltRange = daq.getDouble(String.Format("/{0}/sigins/{1}/range", dev, volt));
-            System.Diagnostics.Trace.WriteLine(
-              String.Format("Current range changed from {0} A to {1} A.", manCurrRange, autoCurrRange));
-            System.Diagnostics.Trace.WriteLine(
-              String.Format("Voltage range changed from {0} A to {1} A.", manVoltRange, autoVoltRange));
+            double autoCurrRange = daq.getDouble(string.Format("/{0}/currins/{1}/range", dev, curr));
+            double autoVoltRange = daq.getDouble(string.Format("/{0}/sigins/{1}/range", dev, volt));
+            Trace.WriteLine(
+              string.Format("Current range changed from {0} A to {1} A.", manCurrRange, autoCurrRange));
+            Trace.WriteLine(
+              string.Format("Voltage range changed from {0} A to {1} A.", manVoltRange, autoVoltRange));
             Debug.Assert(count > 1);
         }
 
@@ -1360,11 +1368,11 @@ namespace ziDotNetExamples
 
             resetDeviceToDefault(daq, dev);
 
-            daq.setInt(String.Format("/{0}/demods/*/rate", dev), 0);
-            daq.setInt(String.Format("/{0}/demods/*/trigger", dev), 0);
-            daq.setInt(String.Format("/{0}/sigouts/*/enables/*", dev), 0);
-            daq.setInt(String.Format("/{0}/demods/*/enable", dev), 0);
-            daq.setInt(String.Format("/{0}/scopes/*/enable", dev), 0);
+            daq.setInt(string.Format("/{0}/demods/*/rate", dev), 0);
+            daq.setInt(string.Format("/{0}/demods/*/trigger", dev), 0);
+            daq.setInt(string.Format("/{0}/sigouts/*/enables/*", dev), 0);
+            daq.setInt(string.Format("/{0}/demods/*/enable", dev), 0);
+            daq.setInt(string.Format("/{0}/scopes/*/enable", dev), 0);
 
             // now the settings relevant to this experiment
             // PID configuration.
@@ -1381,16 +1389,16 @@ namespace ziDotNetExamples
 
             if (!isDeviceFamily(daq, dev, "HF2"))
             {
-                daq.setInt(String.Format("/{0}/pids/0/input", dev), pid_input);
-                daq.setInt(String.Format("/{0}/pids/0/inputchannel", dev), pid_input_channel);
-                daq.setDouble(String.Format("/{0}/pids/0/setpoint", dev), setpoint);
-                daq.setInt(String.Format("/{0}/pids/0/output", dev), pid_output);
-                daq.setInt(String.Format("/{0}/pids/0/outputchannel", dev), pid_output_channel);
-                daq.setDouble(String.Format("/{0}/pids/0/center", dev), pid_center_frequency);
-                daq.setInt(String.Format("/{0}/pids/0/enable", dev), 0);
-                daq.setInt(String.Format("/{0}/pids/0/phaseunwrap", dev), phase_unwrap);
-                daq.setDouble(String.Format("/{0}/pids/0/limitlower", dev), -pid_limits);
-                daq.setDouble(String.Format("/{0}/pids/0/limitupper", dev), pid_limits);
+                daq.setInt(string.Format("/{0}/pids/0/input", dev), pid_input);
+                daq.setInt(string.Format("/{0}/pids/0/inputchannel", dev), pid_input_channel);
+                daq.setDouble(string.Format("/{0}/pids/0/setpoint", dev), setpoint);
+                daq.setInt(string.Format("/{0}/pids/0/output", dev), pid_output);
+                daq.setInt(string.Format("/{0}/pids/0/outputchannel", dev), pid_output_channel);
+                daq.setDouble(string.Format("/{0}/pids/0/center", dev), pid_center_frequency);
+                daq.setInt(string.Format("/{0}/pids/0/enable", dev), 0);
+                daq.setInt(string.Format("/{0}/pids/0/phaseunwrap", dev), phase_unwrap);
+                daq.setDouble(string.Format("/{0}/pids/0/limitlower", dev), -pid_limits);
+                daq.setDouble(string.Format("/{0}/pids/0/limitupper", dev), pid_limits);
             }
             // Perform a global synchronisation between the device and the data server:
             // Ensure that the settings have taken effect on the device before starting
@@ -1456,20 +1464,20 @@ namespace ziDotNetExamples
 
             // Start the module thread
             pidAdvisor.execute();
-            System.Threading.Thread.Sleep(1000);
+            Thread.Sleep(1000);
 
             // Advise
             pidAdvisor.setInt("calculate", 1);
-            System.Diagnostics.Trace.WriteLine(
+            Trace.WriteLine(
               "Starting advising. Optimization process may run up to a minute...");
 
-            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var watch = Stopwatch.StartNew();
             while (true)
             {
                 double progress = pidAdvisor.progress() * 100;
-                System.Diagnostics.Trace.WriteLine(progress, "Progress");
-                System.Threading.Thread.Sleep(1000);
-                Int64 calc = pidAdvisor.getInt("calculate");
+                Trace.WriteLine(progress, "Progress");
+                Thread.Sleep(1000);
+                long calc = pidAdvisor.getInt("calculate");
                 if (calc == 0)
                 {
                     break;
@@ -1479,8 +1487,8 @@ namespace ziDotNetExamples
             watch.Stop();
             var elapsedMs = watch.ElapsedMilliseconds;
 
-            System.Diagnostics.Trace.WriteLine(
-              String.Format("Advice took {0} s.", watch.ElapsedMilliseconds / 1000.0));
+            Trace.WriteLine(
+              string.Format("Advice took {0} s.", watch.ElapsedMilliseconds / 1000.0));
 
             // Get the advised values
             double p_adv = pidAdvisor.getDouble("pid/p");
@@ -1491,12 +1499,12 @@ namespace ziDotNetExamples
             double rate_adv = pidAdvisor.getDouble("pid/rate");
             double bw_adv = pidAdvisor.getDouble("bw");
 
-            System.Diagnostics.Trace.WriteLine(p_adv, "P");
-            System.Diagnostics.Trace.WriteLine(i_adv, "I");
-            System.Diagnostics.Trace.WriteLine(d_adv, "D");
-            System.Diagnostics.Trace.WriteLine(dlimittimeconstant_adv, "D_tc");
-            System.Diagnostics.Trace.WriteLine(rate_adv, "rate");
-            System.Diagnostics.Trace.WriteLine(bw_adv, "bw");
+            Trace.WriteLine(p_adv, "P");
+            Trace.WriteLine(i_adv, "I");
+            Trace.WriteLine(d_adv, "D");
+            Trace.WriteLine(dlimittimeconstant_adv, "D_tc");
+            Trace.WriteLine(rate_adv, "rate");
+            Trace.WriteLine(bw_adv, "bw");
 
             // copy the values from the Advisor to the device
             pidAdvisor.setInt("todevice", 1);
@@ -1508,8 +1516,8 @@ namespace ziDotNetExamples
             double[] grid = result["/bode"][0].advisorWaves[0].grid;
             double[] x = result["/bode"][0].advisorWaves[0].x;
             double[] y = result["/bode"][0].advisorWaves[0].y;
-            String fileName = Environment.CurrentDirectory + "/pidAdvisor.txt";
-            System.IO.StreamWriter file = new System.IO.StreamWriter(fileName);
+            string fileName = Environment.CurrentDirectory + "/pidAdvisor.txt";
+            StreamWriter file = new StreamWriter(fileName);
             for (int i = 0; i < grid.Length; ++i)
             {
                 file.WriteLine("{0} {1} {2}", grid[i], x[i], y[i]);
@@ -1537,32 +1545,32 @@ namespace ziDotNetExamples
         // ATTENTION: test ignored because it requires special device setup
         public void SKIP_MULTIDEVICE_ExampleMultiDeviceDataAcquisition() // Timeout(25000)
         {
-            String[] device_ids = { "dev3133", "dev3144" };
+            string[] device_ids = { "dev3133", "dev3144" };
 
             ziDotNET daq = new ziDotNET();
-            daq.init("localhost", 8004, zhinst.ZIAPIVersion_enum.ZI_API_VERSION_6);
+            daq.init("localhost", 8004, ZIAPIVersion_enum.ZI_API_VERSION_6);
             apiServerVersionCheck(daq);
             daq.connectDevice(device_ids[0], "1gbe", "");
             daq.connectDevice(device_ids[1], "1gbe", "");
 
             // Create instrument configuration: disable all outputs, demods and scopes.
-            foreach (String dev in device_ids)
+            foreach (string dev in device_ids)
             {
-                daq.setInt(String.Format("/{0}/demods/*/enable", dev), 0);
-                daq.setInt(String.Format("/{0}/demods/*/trigger", dev), 0);
-                daq.setInt(String.Format("/{0}/sigouts/*/enables/*", dev), 0);
-                daq.setInt(String.Format("/{0}/scopes/*/enable", dev), 0);
-                daq.setInt(String.Format("/{0}/imps/*/enable", dev), 0);
+                daq.setInt(string.Format("/{0}/demods/*/enable", dev), 0);
+                daq.setInt(string.Format("/{0}/demods/*/trigger", dev), 0);
+                daq.setInt(string.Format("/{0}/sigouts/*/enables/*", dev), 0);
+                daq.setInt(string.Format("/{0}/scopes/*/enable", dev), 0);
+                daq.setInt(string.Format("/{0}/imps/*/enable", dev), 0);
                 daq.sync();
             }
 
-            System.Diagnostics.Trace.WriteLine("Synchronizing devices " + String.Join(",", device_ids) + "...\n");
+            Trace.WriteLine("Synchronizing devices " + string.Join(",", device_ids) + "...\n");
 
             ziModule mds = daq.multiDeviceSyncModule();
             mds.setInt("start", 0);
             mds.setInt("group", 0);
             mds.execute();
-            mds.setString("devices", String.Join(",", device_ids));
+            mds.setString("devices", string.Join(",", device_ids));
             mds.setInt("start", 1);
 
             // Wait for MDS to complete
@@ -1571,16 +1579,16 @@ namespace ziDotNetExamples
             while (status != 2 && local_timeout > 0.0)
             {
                 status = mds.getInt("status");
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
                 local_timeout -= 0.1;
             }
 
             if (status != 2)
             {
-                System.Diagnostics.Trace.WriteLine("Error during synchronization.\n");
+                Trace.WriteLine("Error during synchronization.\n");
                 Fail();
             }
-            System.Diagnostics.Trace.WriteLine("Devices successfully synchronized.");
+            Trace.WriteLine("Devices successfully synchronized.");
 
             // Device settings
             int demod_c = 0; // demod channel, for paths on the device
@@ -1596,27 +1604,27 @@ namespace ziDotNetExamples
             double out_amp = 0.600;   // [V]
 
             // Device settings
-            foreach (String dev in device_ids)
+            foreach (string dev in device_ids)
             {
-                daq.setDouble(String.Format("/{0}/demods/{1}/phaseshift", dev, demod_c), 0);
-                daq.setInt(String.Format("/{0}/demods/{1}/order", dev, demod_c), filter_order);
-                daq.setDouble(String.Format("/{0}/demods/{1}/rate", dev, demod_c), demod_rate);
-                daq.setInt(String.Format("/{0}/demods/{1}/harmonic", dev, demod_c), 1);
-                daq.setInt(String.Format("/{0}/demods/{1}/enable", dev, demod_c), 1);
-                daq.setInt(String.Format("/{0}/demods/{1}/oscselect", dev, demod_c), osc_c);
-                daq.setInt(String.Format("/{0}/demods/{1}/adcselect", dev, demod_c), in_c);
-                daq.setDouble(String.Format("/{0}/demods/{1}/timeconstant", dev, demod_c), time_constant);
-                daq.setDouble(String.Format("/{0}/oscs/{1}/freq", dev, osc_c), osc_freq);
-                daq.setInt(String.Format("/{0}/sigins/{1}/imp50", dev, in_c), 1);
-                daq.setInt(String.Format("/{0}/sigins/{1}/ac", dev, in_c), 0);
-                daq.setDouble(String.Format("/{0}/sigins/{1}/range", dev, in_c), out_amp / 2);
+                daq.setDouble(string.Format("/{0}/demods/{1}/phaseshift", dev, demod_c), 0);
+                daq.setInt(string.Format("/{0}/demods/{1}/order", dev, demod_c), filter_order);
+                daq.setDouble(string.Format("/{0}/demods/{1}/rate", dev, demod_c), demod_rate);
+                daq.setInt(string.Format("/{0}/demods/{1}/harmonic", dev, demod_c), 1);
+                daq.setInt(string.Format("/{0}/demods/{1}/enable", dev, demod_c), 1);
+                daq.setInt(string.Format("/{0}/demods/{1}/oscselect", dev, demod_c), osc_c);
+                daq.setInt(string.Format("/{0}/demods/{1}/adcselect", dev, demod_c), in_c);
+                daq.setDouble(string.Format("/{0}/demods/{1}/timeconstant", dev, demod_c), time_constant);
+                daq.setDouble(string.Format("/{0}/oscs/{1}/freq", dev, osc_c), osc_freq);
+                daq.setInt(string.Format("/{0}/sigins/{1}/imp50", dev, in_c), 1);
+                daq.setInt(string.Format("/{0}/sigins/{1}/ac", dev, in_c), 0);
+                daq.setDouble(string.Format("/{0}/sigins/{1}/range", dev, in_c), out_amp / 2);
 
             }
             // settings on leader
-            daq.setInt(String.Format("/{0}/sigouts/{1}/on", device_ids[0], out_c), 1);
-            daq.setDouble(String.Format("/{0}/sigouts/{1}/range", device_ids[0], out_c), 1);
-            daq.setDouble(String.Format("/{0}/sigouts/{1}/amplitudes/{2}", device_ids[0], out_c, out_mixer_c), out_amp);
-            daq.setDouble(String.Format("/{0}/sigouts/{1}/enables/{2}", device_ids[0], out_c, out_mixer_c), 0);
+            daq.setInt(string.Format("/{0}/sigouts/{1}/on", device_ids[0], out_c), 1);
+            daq.setDouble(string.Format("/{0}/sigouts/{1}/range", device_ids[0], out_c), 1);
+            daq.setDouble(string.Format("/{0}/sigouts/{1}/amplitudes/{2}", device_ids[0], out_c, out_mixer_c), out_amp);
+            daq.setDouble(string.Format("/{0}/sigouts/{1}/enables/{2}", device_ids[0], out_c, out_mixer_c), 0);
 
             // Synchronization
             daq.sync();
@@ -1670,14 +1678,14 @@ namespace ziDotNetExamples
             //     SAMPLE.AUXIN0 = Auxilliary input 1 value
             //     SAMPLE.AUXIN1 = Auxilliary input 2 value
             //     SAMPLE.DIO = Digital I/O value
-            string triggernode = String.Format("/{0}/demods/{1}/sample.r", device_ids[0], demod_c);
+            string triggernode = string.Format("/{0}/demods/{1}/sample.r", device_ids[0], demod_c);
             daqMod.setString("triggernode", triggernode);
             //   edge:
             //     POS_EDGE = 1
             //     NEG_EDGE = 2
             //     BOTH_EDGE = 3
             daqMod.setInt("edge", 1);
-            demod_rate = daq.getDouble(String.Format("/{0}/demods/{1}/rate", device_ids[0], demod_c));
+            demod_rate = daq.getDouble(string.Format("/{0}/demods/{1}/rate", device_ids[0], demod_c));
             // Exact mode: To preserve our desired trigger duration, we have to set
             // the number of grid columns to exactly match.
             double trigger_duration = time_constant * 30;
@@ -1702,27 +1710,27 @@ namespace ziDotNetExamples
 
             // Subscribe to the demodulators
             daqMod.unsubscribe("*");
-            foreach (String dev in device_ids)
+            foreach (string dev in device_ids)
             {
-                string node = String.Format("/{0}/demods/{1}/sample.r", dev, demod_c);
+                string node = string.Format("/{0}/demods/{1}/sample.r", dev, demod_c);
                 daqMod.subscribe(node);
             }
 
             // Execute the module
             daqMod.execute();
             // Send a trigger
-            daq.setDouble(String.Format("/{0}/sigouts/{1}/enables/{2}", device_ids[0], out_c, out_mixer_c), 1);
+            daq.setDouble(string.Format("/{0}/sigouts/{1}/enables/{2}", device_ids[0], out_c, out_mixer_c), 1);
             while (!daqMod.finished())
             {
-                System.Threading.Thread.Sleep(1000);
-                System.Diagnostics.Trace.WriteLine(String.Format("Progress {0}", daqMod.progress()));
+                Thread.Sleep(1000);
+                Trace.WriteLine(string.Format("Progress {0}", daqMod.progress()));
             }
 
             // Read the result
             Lookup result = daqMod.read();
 
             // Turn off the trigger
-            daq.setDouble(String.Format("/{0}/sigouts/{1}/enables/{2}", device_ids[0], out_c, out_mixer_c), 0);
+            daq.setDouble(string.Format("/{0}/sigouts/{1}/enables/{2}", device_ids[0], out_c, out_mixer_c), 0);
             // Finish the DAQ module
             daqMod.finish();
 
@@ -1733,17 +1741,17 @@ namespace ziDotNetExamples
             mds.clear();
 
             // Extracting and saving the data
-            double mClockbase = daq.getDouble(String.Format("/{0}/clockbase", device_ids[0]));
+            double mClockbase = daq.getDouble(string.Format("/{0}/clockbase", device_ids[0]));
 
             List<ZIDoubleData[]> data = new List<ZIDoubleData[]>();
-            foreach (String dev in device_ids)
+            foreach (string dev in device_ids)
             {
                 string node = string.Format("/{0}/demods/{1}/sample.r", dev, demod_c);
                 data.Add(result[node][0].doubleData);
             }
 
-            String fileName = Environment.CurrentDirectory + "/mds_dataacquisition.txt";
-            System.IO.StreamWriter file = new System.IO.StreamWriter(fileName);
+            string fileName = Environment.CurrentDirectory + "/mds_dataacquisition.txt";
+            StreamWriter file = new StreamWriter(fileName);
 
             for (int i = 0; i < data[0].Length; ++i)
             {
@@ -1756,7 +1764,7 @@ namespace ziDotNetExamples
         }
 
         #endregion
-                        
+
         #region private function
         // The resetDeviceToDefault will reset the device settings
         // to factory default. The call is quite expensive
@@ -1771,35 +1779,35 @@ namespace ziDotNetExamples
             if (isDeviceFamily(daq, dev, "HF2"))
             {
                 // The HF2 devices do not support the preset functionality.
-                daq.setDouble(String.Format("/{0}/demods/*/rate", dev), 250);
+                daq.setDouble(string.Format("/{0}/demods/*/rate", dev), 250);
                 return;
             }
 
-            daq.setInt(String.Format("/{0}/system/preset/index", dev), 0);
-            daq.setInt(String.Format("/{0}/system/preset/load", dev), 1);
-            while (daq.getInt(String.Format("/{0}/system/preset/busy", dev)) != 0)
+            daq.setInt(string.Format("/{0}/system/preset/index", dev), 0);
+            daq.setInt(string.Format("/{0}/system/preset/load", dev), 1);
+            while (daq.getInt(string.Format("/{0}/system/preset/busy", dev)) != 0)
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
             }
-            System.Threading.Thread.Sleep(1000);
+            Thread.Sleep(1000);
         }
 
         // The isDeviceFamily checks for a specific device family.
         // Currently available families: "HF2", "UHF", "MF"
-        private static bool isDeviceFamily(ziDotNET daq, string dev, String family)
+        private static bool isDeviceFamily(ziDotNET daq, string dev, string family)
         {
-            String path = String.Format("/{0}/features/devtype", dev);
-            String devType = daq.getByte(path);
+            string path = string.Format("/{0}/features/devtype", dev);
+            string devType = daq.getByte(path);
             return devType.StartsWith(family);
         }
 
         // The hasOption function checks if the device
         // does support a specific functionality, thus
         // has installed the option.
-        private static bool hasOption(ziDotNET daq, string dev, String option)
+        private static bool hasOption(ziDotNET daq, string dev, string option)
         {
-            String path = String.Format("/{0}/features/options", dev);
-            String options = daq.getByte(path);
+            string path = string.Format("/{0}/features/options", dev);
+            string options = daq.getByte(path);
             return options.Contains(option);
         }
 
@@ -1840,8 +1848,8 @@ namespace ziDotNetExamples
         // - Do an automatic upgrade / downgrade
         private static void apiServerVersionCheck(ziDotNET daq)
         {
-            String serverVersion = daq.getByte("/zi/about/version");
-            String apiVersion = daq.version();
+            string serverVersion = daq.getByte("/zi/about/version");
+            string apiVersion = daq.version();
 
             AssertEqual(serverVersion, apiVersion,
                    "Version mismatch between LabOne API and Data Server.");
@@ -1851,12 +1859,12 @@ namespace ziDotNetExamples
         private static ziDotNET connect(string dev)
         {
             ziDotNET daq = new ziDotNET();
-            String id = daq.discoveryFind(dev);
-            String iface = daq.discoveryGetValueS(dev, "connected");
+            string id = daq.discoveryFind(dev);
+            string iface = daq.discoveryGetValueS(dev, "connected");
             if (string.IsNullOrWhiteSpace(iface))
             {
                 // Device is not connected to the server
-                String ifacesList = daq.discoveryGetValueS(dev, "interfaces");
+                string ifacesList = daq.discoveryGetValueS(dev, "interfaces");
                 // Select the first available interface and use it to connect
                 string[] ifaces = ifacesList.Split('\n');
                 if (ifaces.Length > 0)
@@ -1864,11 +1872,11 @@ namespace ziDotNetExamples
                     iface = ifaces[0];
                 }
             }
-            String host = daq.discoveryGetValueS(dev, "serveraddress");
+            string host = daq.discoveryGetValueS(dev, "serveraddress");
             long port = daq.discoveryGetValueI(dev, "serverport");
             long api = daq.discoveryGetValueI(dev, "apilevel");
-            System.Diagnostics.Trace.WriteLine(
-              String.Format("Connecting to server {0}:{1} wich API level {2}",
+            Trace.WriteLine(
+              string.Format("Connecting to server {0}:{1} wich API level {2}",
               host, port, api));
             daq.init(host, Convert.ToUInt16(port), (ZIAPIVersion_enum)api);
             // Ensure that LabOne API and LabOne Data Server are from
@@ -1876,8 +1884,8 @@ namespace ziDotNetExamples
             apiServerVersionCheck(daq);
             // If device is not yet connected a reconnect
             // will not harm.
-            System.Diagnostics.Trace.WriteLine(
-              String.Format("Connecting to {0} on inteface {1}", dev, iface));
+            Trace.WriteLine(
+              string.Format("Connecting to {0} on inteface {1}", dev, iface));
             daq.connectDevice(dev, iface, "");
 
             return daq;
@@ -1919,6 +1927,10 @@ namespace ziDotNetExamples
         #endregion
 
 
+        static double Sinc(double x)
+        {
+            return x != 0.0 ? Math.Sin(Math.PI * x) / (Math.PI * x) : 1.0;
+        }
 
         #region Custom private function
         private string demods_pathMaker(int channel = 0, string function = "", string device = DEFAULT_DEVICE)
@@ -1929,11 +1941,7 @@ namespace ziDotNetExamples
 
         #endregion
 
-        static double Sinc(double x)
-        {
-            return x != 0.0 ? Math.Sin(Math.PI * x) / (Math.PI * x) : 1.0;
-        }
 
     }
 
-}
+

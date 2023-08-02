@@ -1,30 +1,27 @@
-﻿using zhinst;
-using ziDotNetExamples;
+﻿using app_console.model;
+using System.Threading.Channels;
+using zhinst;
 
-namespace ziDotNetExamples 
+namespace app_console 
 {
-
     public class Program { 
             static void Main(string[] args) {
-            Examples examples = new Examples();
+            Zurich zurich = new Zurich(device:"dev3066", channel:0);
             //examples.DeviceInit_Settings();
-            examples.DeviceInit_Load(preset_flash_number: 2);
-            //examples.GetDemodSample();
-            examples.Subscribe(channel: 0);
-            //Thread.Sleep(1500);
-            //examples.Subscribe(channel: 1);
-            examples.PollDemodSample(channel: 0);
-            Thread.Sleep(100);
-            examples.PollDemodSample(channel: 0);
-            Thread.Sleep(100);
-            examples.PollDemodSample(channel: 0);
-            examples.PollDemodSample(channel: 0);
+            zurich.DeviceInit_Load(preset_flash_number: 2);
+            zurich.GetSample();
 
-            examples.UnSubscribe(channel: 0);
-            //examples.UnSubscribe(channel: 1);
-            examples.DeviceClose();
+            zurich.Subscribe();
 
-            //Examples.ExamplePollDemodSample();
+            TriggerData trigger_data = zurich.PollSample();
+            for(int i = 0; i<trigger_data.sample_length;i++){            
+                Console.WriteLine("Amplitude: " + trigger_data.amplitude_list[i]+ ", Phase:" + trigger_data.phase_list[i]*180/Math.PI);
+            }
+            Console.WriteLine("--------------------------");
+            Console.Write("Buffer length: " + trigger_data.sample_length);
+
+            zurich.UnSubscribe();
+            zurich.DeviceClose();
         }
     }
 }
